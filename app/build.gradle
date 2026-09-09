@@ -1,28 +1,26 @@
 plugins { id 'com.android.application' }
 
 android {
-    namespace 'in.justsimple.indexalgo'
+    namespace 'com.justsimple.indexalgo'
     compileSdk 35
+
     defaultConfig {
-        applicationId 'in.justsimple.indexalgo'
-        minSdk 26
+        applicationId "com.justsimple.hiteshalgo"
+        minSdk 23
         targetSdk 35
-        versionCode 1
-        versionName '1.0.0-paper'
+        versionCode 4
+        versionName "4.0.0-navigation-fix"
     }
+
     buildTypes {
         release {
             minifyEnabled false
             proguardFiles getDefaultProguardFile('proguard-android-optimize.txt'), 'proguard-rules.pro'
         }
     }
+
     compileOptions {
         sourceCompatibility JavaVersion.VERSION_17
         targetCompatibility JavaVersion.VERSION_17
     }
-}
-dependencies {
-    implementation 'androidx.appcompat:appcompat:1.7.0'
-    implementation 'com.google.android.material:material:1.12.0'
-    implementation 'androidx.security:security-crypto:1.1.0-alpha06'
 }
