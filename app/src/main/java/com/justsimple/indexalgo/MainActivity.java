@@ -7,6 +7,7 @@ import android.content.pm.PackageManager;
 import android.graphics.Color;
 import android.graphics.Typeface;
 import android.os.Bundle;
+import android.os.Build;
 import android.text.InputType;
 import android.view.Gravity;
 import android.view.View;
@@ -16,8 +17,14 @@ public class MainActivity extends Activity {
     private static final int BG=Color.rgb(13,20,27), PANEL=Color.rgb(25,36,46), PANEL2=Color.rgb(31,44,55);
     private static final int TEXT=Color.rgb(240,245,247), MUTED=Color.rgb(151,169,181), GREEN=Color.rgb(0,204,153), RED=Color.rgb(239,83,80), AMBER=Color.rgb(255,183,77);
     private LinearLayout content, nav; private TextView pageTitle, engineBadge; private SharedPreferences prefs;
+    private final Button[] navButtons=new Button[5]; private int activeTab=0;
 
-    @Override public void onCreate(Bundle b){super.onCreate(b);prefs=getSharedPreferences("hitesh_algo",MODE_PRIVATE);setContentView(shell());showDashboard();}
+    @Override public void onCreate(Bundle b){super.onCreate(b);prefs=getSharedPreferences("hitesh_algo",MODE_PRIVATE);getWindow().setStatusBarColor(BG);getWindow().setNavigationBarColor(BG);View root=shell();setContentView(root);applySafeInsets(root);showDashboard();}
+
+    private void applySafeInsets(View root){
+        if(Build.VERSION.SDK_INT>=23)root.setOnApplyWindowInsetsListener((v,insets)->{v.setPadding(0,insets.getSystemWindowInsetTop(),0,insets.getSystemWindowInsetBottom());return insets.consumeSystemWindowInsets();});
+        root.requestApplyInsets();
+    }
 
     private View shell(){
         LinearLayout root=col(); root.setBackgroundColor(BG);
@@ -26,10 +33,10 @@ public class MainActivity extends Activity {
         engineBadge=badge("● PAPER SAFE",GREEN); top.addView(engineBadge); root.addView(top);
         ScrollView scroll=new ScrollView(this); content=col(); content.setPadding(dp(16),dp(8),dp(16),dp(28)); scroll.addView(content); root.addView(scroll,new LinearLayout.LayoutParams(-1,0,1));
         nav=row(); nav.setPadding(dp(4),dp(5),dp(4),dp(8)); nav.setBackgroundColor(Color.rgb(19,29,37));
-        addNav("HOME",this::showDashboard);addNav("MARKETS",this::showMarkets);addNav("STRATEGY",this::showStrategy);addNav("TRADES",this::showTrades);addNav("SETTINGS",this::showSettings);root.addView(nav,new LinearLayout.LayoutParams(-1,dp(68))); return root;
+        addNav(0,"⌂\nHOME",this::showDashboard);addNav(1,"▥\nMARKETS",this::showMarkets);addNav(2,"⚙\nSTRATEGY",this::showStrategy);addNav(3,"≡\nTRADES",this::showTrades);addNav(4,"●\nSETTINGS",this::showSettings);root.addView(nav,new LinearLayout.LayoutParams(-1,dp(76))); return root;
     }
 
-    private void showDashboard(){clear("CONTROL CENTRE");
+    private void showDashboard(){selectTab(0);clear("CONTROL CENTRE");
         LinearLayout hero=card();hero.addView(txt("ALGO STATUS",11,GREEN,true));hero.addView(txt(prefs.getBoolean("running",false)?"Engine running":"Engine stopped",25,TEXT,true));hero.addView(txt("Mobile foreground execution • 5-minute close confirmation",12,MUTED,false));content.addView(hero);
         LinearLayout stats=row();stats.addView(stat("MODE","PAPER",GREEN),new LinearLayout.LayoutParams(0,dp(92),1));stats.addView(space(8));stats.addView(stat("OPEN","0",TEXT),new LinearLayout.LayoutParams(0,dp(92),1));stats.addView(space(8));stats.addView(stat("DAY P&L","₹0",TEXT),new LinearLayout.LayoutParams(0,dp(92),1));content.addView(stats);
         section("QUICK CONTROL");
@@ -40,11 +47,11 @@ public class MainActivity extends Activity {
         section("SAFETY"); content.addView(info("Live orders are locked. Connect Angel One, validate live candles and complete paper testing before enabling real-money mode.",AMBER));
     }
 
-    private void showMarkets(){clear("LIVE MARKETS"); content.addView(info("Prices will stream from Angel One SmartAPI after broker connection.",GREEN)); market("NIFTY 50","NSE","ORB Retest");market("BANK NIFTY","NFO","Dynamic ATR");market("SENSEX","BSE","Strict liquidity");
+    private void showMarkets(){selectTab(1);clear("LIVE MARKETS"); content.addView(info("Prices will stream from Angel One SmartAPI after broker connection.",GREEN)); market("NIFTY 50","NSE","ORB Retest");market("BANK NIFTY","NFO","Dynamic ATR");market("SENSEX","BSE","Strict liquidity");
         section("SIGNAL PIPELINE");content.addView(step("1","Index ticks → 1m / 5m / 15m candles"));content.addView(step("2","Regime → ORB/VWAP/EMA/ADX/ATR"));content.addView(step("3","CE/PE score → liquidity → risk check"));content.addView(step("4","Paper fill → SL/target/trailing → exit"));
     }
 
-    private void showStrategy(){clear("STRATEGY EDITOR"); Spinner index=spinner(new String[]{"NIFTY","BANKNIFTY","SENSEX"});content.addView(index);LinearLayout editor=col();content.addView(editor);Runnable render=()->renderEditor(editor,index.getSelectedItem().toString());render.run();index.setOnItemSelectedListener(new android.widget.AdapterView.OnItemSelectedListener(){public void onNothingSelected(android.widget.AdapterView<?> p){}public void onItemSelected(android.widget.AdapterView<?> p,View v,int pos,long id){render.run();}});}
+    private void showStrategy(){selectTab(2);clear("STRATEGY EDITOR"); Spinner index=spinner(new String[]{"NIFTY","BANKNIFTY","SENSEX"});content.addView(index);LinearLayout editor=col();content.addView(editor);Runnable render=()->renderEditor(editor,index.getSelectedItem().toString());render.run();index.setOnItemSelectedListener(new android.widget.AdapterView.OnItemSelectedListener(){public void onNothingSelected(android.widget.AdapterView<?> p){}public void onItemSelected(android.widget.AdapterView<?> p,View v,int pos,long id){render.run();}});}
 
     private void renderEditor(LinearLayout box,String idx){box.removeAllViews();String key="cfg_"+idx;
         Switch enabled=toggle("Strategy enabled",prefs.getBoolean(key+"_enabled",true));box.addView(enabled);box.addView(caption("ACTIVE STRATEGY"));Spinner strategy=spinner(new String[]{"ORB_RETEST","VWAP_EMA_PULLBACK","PDH_PDL_BREAKOUT","COMPRESSION_BREAKOUT","GAP_CONTINUATION"});box.addView(strategy);
@@ -57,9 +64,9 @@ public class MainActivity extends Activity {
         Button reset=button("RESTORE RECOMMENDED DEFAULTS",PANEL2,TEXT);reset.setOnClickListener(v->{prefs.edit().clear().apply();renderEditor(box,idx);toast("Defaults restored");});box.addView(reset,marginTop(8));
     }
 
-    private void showTrades(){clear("ORDERS & TRADES");LinearLayout stats=row();stats.addView(stat("TRADES","0",TEXT),new LinearLayout.LayoutParams(0,dp(92),1));stats.addView(space(8));stats.addView(stat("WIN RATE","—",TEXT),new LinearLayout.LayoutParams(0,dp(92),1));stats.addView(space(8));stats.addView(stat("P&L","₹0",TEXT),new LinearLayout.LayoutParams(0,dp(92),1));content.addView(stats);section("OPEN POSITION");content.addView(empty("No open position","Selected option, entry, stop, target and live P&L will appear here."));section("TODAY'S ACTIVITY");content.addView(empty("No trades yet","Paper orders and rejection reasons will be recorded automatically."));section("RISK STATUS");content.addView(info("0/3 trades • 0/2 consecutive losses • Daily loss ₹0",GREEN));}
+    private void showTrades(){selectTab(3);clear("ORDERS & TRADES");LinearLayout stats=row();stats.addView(stat("TRADES","0",TEXT),new LinearLayout.LayoutParams(0,dp(92),1));stats.addView(space(8));stats.addView(stat("WIN RATE","—",TEXT),new LinearLayout.LayoutParams(0,dp(92),1));stats.addView(space(8));stats.addView(stat("P&L","₹0",TEXT),new LinearLayout.LayoutParams(0,dp(92),1));content.addView(stats);section("OPEN POSITION");content.addView(empty("No open position","Selected option, entry, stop, target and live P&L will appear here."));section("TODAY'S ACTIVITY");content.addView(empty("No trades yet","Paper orders and rejection reasons will be recorded automatically."));section("RISK STATUS");content.addView(info("0/3 trades • 0/2 consecutive losses • Daily loss ₹0",GREEN));}
 
-    private void showSettings(){clear("BROKER & APP SETTINGS");section("ANGEL ONE SMARTAPI");SecureStore secure=new SecureStore(this);EditText client=field("Client code",secure.get("client"),false),api=field("API key",secure.get("api"),false),pin=secret("Trading PIN"),totp=secret("TOTP secret");content.addView(client);content.addView(api);content.addView(pin);content.addView(totp);Button save=button("SAVE ENCRYPTED ON THIS DEVICE",GREEN,Color.rgb(5,30,24));save.setOnClickListener(v->{try{secure.put("client",val(client));secure.put("api",val(api));if(!val(pin).isEmpty())secure.put("pin",val(pin));if(!val(totp).isEmpty())secure.put("totp",val(totp));toast("Credentials encrypted and saved");}catch(Exception e){toast("Secure save failed");}});content.addView(save);Button test=button("TEST CONNECTION (NO ORDER)",PANEL2,TEXT);test.setOnClickListener(v->toast("Live connector pending validation"));content.addView(test,marginTop(8));section("TRADING MODE");Switch paper=toggle("Paper trading",true);paper.setEnabled(false);content.addView(paper);Switch live=toggle("Live trading (locked)",false);live.setEnabled(false);content.addView(live);section("MOBILE RELIABILITY");content.addView(info("Keep battery optimization OFF, allow background data and keep the engine notification enabled during market hours.",AMBER));section("APP");content.addView(kv("Version","2.0 Professional UI"));content.addView(kv("Order mode","Paper only"));content.addView(kv("Overnight","Blocked"));}
+    private void showSettings(){selectTab(4);clear("BROKER & APP SETTINGS");section("ANGEL ONE SMARTAPI");SecureStore secure=new SecureStore(this);EditText client=field("Client code",secure.get("client"),false),api=field("API key",secure.get("api"),false),pin=secret("Trading PIN"),totp=secret("TOTP secret");content.addView(client);content.addView(api);content.addView(pin);content.addView(totp);Button save=button("SAVE ENCRYPTED ON THIS DEVICE",GREEN,Color.rgb(5,30,24));save.setOnClickListener(v->{try{secure.put("client",val(client));secure.put("api",val(api));if(!val(pin).isEmpty())secure.put("pin",val(pin));if(!val(totp).isEmpty())secure.put("totp",val(totp));toast("Credentials encrypted and saved");}catch(Exception e){toast("Secure save failed");}});content.addView(save);Button test=button("TEST CONNECTION (NO ORDER)",PANEL2,TEXT);test.setOnClickListener(v->toast("Live connector pending validation"));content.addView(test,marginTop(8));section("TRADING MODE");Switch paper=toggle("Paper trading",true);paper.setEnabled(false);content.addView(paper);Switch live=toggle("Live trading (locked)",false);live.setEnabled(false);content.addView(live);section("MOBILE RELIABILITY");content.addView(info("Keep battery optimization OFF, allow background data and keep the engine notification enabled during market hours.",AMBER));section("APP");content.addView(kv("Version","4.0 Navigation Fix"));content.addView(kv("Order mode","Paper only"));content.addView(kv("Overnight","Blocked"));}
 
     private void startEngine(){if(android.os.Build.VERSION.SDK_INT>=33&&checkSelfPermission(Manifest.permission.POST_NOTIFICATIONS)!=PackageManager.PERMISSION_GRANTED)requestPermissions(new String[]{Manifest.permission.POST_NOTIFICATIONS},10);startForegroundService(new Intent(this,AlgoService.class));prefs.edit().putBoolean("running",true).apply();engineBadge.setText("● ENGINE ON");toast("Paper engine started");showDashboard();}
     private void stopEngine(){stopService(new Intent(this,AlgoService.class));prefs.edit().putBoolean("running",false).apply();engineBadge.setText("● PAPER SAFE");toast("Engine stopped");showDashboard();}
@@ -70,7 +77,8 @@ public class MainActivity extends Activity {
     private TextView info(String s,int color){TextView t=txt(s,13,color,false);t.setPadding(dp(15),dp(15),dp(15),dp(15));t.setBackgroundColor(PANEL);return t;}
     private LinearLayout step(String n,String s){LinearLayout r=row();r.setGravity(Gravity.CENTER_VERTICAL);r.addView(badge(n,GREEN));TextView t=txt(s,13,TEXT,false);t.setPadding(dp(12),dp(11),0,dp(11));r.addView(t,new LinearLayout.LayoutParams(0,-2,1));return r;}
     private LinearLayout kv(String k,String v){LinearLayout c=col();c.addView(txt(k,10,MUTED,true));c.addView(txt(v,13,TEXT,true));return c;}
-    private void clear(String title){content.removeAllViews();pageTitle.setText(title);}private void addNav(String label,Runnable action){Button b=button(label,Color.TRANSPARENT,MUTED);b.setTextSize(10);b.setOnClickListener(v->action.run());nav.addView(b,new LinearLayout.LayoutParams(0,-1,1));}
+    private void clear(String title){content.removeAllViews();pageTitle.setText(title);}private void addNav(int index,String label,Runnable action){Button b=button(label,Color.TRANSPARENT,MUTED);b.setTextSize(10);b.setGravity(Gravity.CENTER);b.setPadding(0,dp(5),0,dp(5));b.setOnClickListener(v->action.run());navButtons[index]=b;nav.addView(b,new LinearLayout.LayoutParams(0,-1,1));}
+    private void selectTab(int index){activeTab=index;for(int i=0;i<navButtons.length;i++){Button b=navButtons[i];if(b!=null){b.setTextColor(i==index?GREEN:MUTED);b.setBackgroundColor(i==index?PANEL2:Color.TRANSPARENT);}}}
     private void section(String s){content.addView(sectionView(s));}private void sectionInto(LinearLayout b,String s){b.addView(sectionView(s));}private TextView sectionView(String s){TextView t=txt(s,11,GREEN,true);t.setLetterSpacing(.14f);t.setPadding(dp(2),dp(24),0,dp(10));return t;}
     private EditText field(String hint,String value,boolean num){EditText e=new EditText(this);e.setHint(hint);e.setHintTextColor(MUTED);e.setText(value);e.setTextColor(TEXT);e.setTextSize(16);e.setSingleLine();e.setSelectAllOnFocus(true);e.setPadding(dp(15),dp(12),dp(15),dp(12));e.setBackgroundColor(PANEL);if(num)e.setInputType(InputType.TYPE_CLASS_NUMBER|InputType.TYPE_NUMBER_FLAG_DECIMAL);LinearLayout.LayoutParams p=new LinearLayout.LayoutParams(-1,dp(58));p.setMargins(0,0,0,dp(8));e.setLayoutParams(p);return e;}
     private EditText secret(String hint){EditText e=field(hint,"",false);e.setInputType(InputType.TYPE_CLASS_TEXT|InputType.TYPE_TEXT_VARIATION_PASSWORD);return e;}private Spinner spinner(String[] a){Spinner s=new Spinner(this);ArrayAdapter<String>d=new ArrayAdapter<>(this,android.R.layout.simple_spinner_dropdown_item,a);s.setAdapter(d);s.setBackgroundColor(PANEL);s.setPadding(dp(12),0,dp(12),0);s.setLayoutParams(new LinearLayout.LayoutParams(-1,dp(58)));return s;}
